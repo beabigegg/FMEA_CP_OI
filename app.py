@@ -1,7 +1,12 @@
 from fastapi import FastAPI
 
 # Import all the routers
-from src.api import documents_router, items_router, associations_router, ai_suggestions_router
+from src.api import (
+    documents_router,
+    items_router,
+    ap_router,
+    fe_router,
+)
 
 app = FastAPI(
     title="FMEA-CP-OI Analysis Platform API",
@@ -20,8 +25,10 @@ def read_root():
 api_prefix = "/api/v1"
 app.include_router(documents_router.router, prefix=api_prefix)
 app.include_router(items_router.router, prefix=api_prefix)
-app.include_router(associations_router.router, prefix=api_prefix)
-app.include_router(ai_suggestions_router.router, prefix=api_prefix)
+app.include_router(ap_router.router, prefix=api_prefix)
+# Register the Failure Effects router to expose FE options endpoints
+app.include_router(fe_router.router, prefix=api_prefix)
+app.include_router(fe_router.router, prefix=api_prefix)
 
 # To run this application:
 # 1. Ensure your .env file is correctly configured with database and DIFY credentials.
