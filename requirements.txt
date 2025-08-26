@@ -1,0 +1,12 @@
+requests
+python-dotenv
+pandas
+openpyxl
+python-docx
+
+# Web Framework and Database
+fastapi
+uvicorn[standard]
+SQLAlchemy
+PyMySQL
+pydantic-settings
