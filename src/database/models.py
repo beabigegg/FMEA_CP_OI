@@ -45,3 +45,26 @@ class Association(Base):
     # We must specify foreign_keys because there are two FKs to the same Item table
     fmea_item = relationship('Item', foreign_keys=[fmea_item_id])
     cp_item = relationship('Item', foreign_keys=[cp_item_id])
+
+
+class ItemHistory(Base):
+    __tablename__ = 'fmcp_item_history'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    item_id = Column(Integer, ForeignKey('fmcp_items.id', ondelete='CASCADE'), nullable=False)
+    old_content = Column(JSON, nullable=True)
+    new_content = Column(JSON, nullable=False)
+    change_type = Column(Enum('CREATE', 'UPDATE', 'DELETE'), nullable=False)
+    changed_by = Column(String(100), nullable=False)
+    changed_at = Column(TIMESTAMP, server_default=func.now())
+
+    item = relationship('Item')
+
+class User(Base):
+    __tablename__ = 'fmcp_users'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(100), nullable=False, unique=True)
+    hashed_password = Column(String(255), nullable=False)
+    role = Column(String(50), default='editor')
+    created_at = Column(TIMESTAMP, server_default=func.now())

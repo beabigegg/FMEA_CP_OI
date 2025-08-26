@@ -10,3 +10,7 @@ uvicorn[standard]
 SQLAlchemy
 PyMySQL
 pydantic-settings
+
+# User Authentication & Security
+passlib[bcrypt]
+python-jose[cryptography]

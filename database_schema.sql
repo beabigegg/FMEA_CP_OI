@@ -41,3 +41,25 @@ CREATE TABLE IF NOT EXISTS `fmcp_associations` (
   FOREIGN KEY (`cp_item_id`) REFERENCES `fmcp_items`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+
+
+-- Table to log all changes made to items for audit trail purposes
+CREATE TABLE IF NOT EXISTS `fmcp_item_history` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `item_id` INT NOT NULL COMMENT 'The ID of the item being changed',
+  `old_content` JSON COMMENT 'The content of the item before the change',
+  `new_content` JSON NOT NULL COMMENT 'The content of the item after the change',
+  `change_type` ENUM('CREATE', 'UPDATE', 'DELETE') NOT NULL,
+  `changed_by` VARCHAR(100) NOT NULL,
+  `changed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`item_id`) REFERENCES `fmcp_items`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Table for user authentication and authorization
+CREATE TABLE IF NOT EXISTS `fmcp_users` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `username` VARCHAR(100) NOT NULL UNIQUE,
+  `hashed_password` VARCHAR(255) NOT NULL,
+  `role` VARCHAR(50) DEFAULT 'editor',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

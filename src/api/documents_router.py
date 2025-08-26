@@ -18,6 +18,7 @@ from src.database import models, database
 from src.parsers import fmea_parser, cp_parser
 from src.utils import fe_list_parser  # New parser for FE options
 from src.utils.time_utils import to_local
+from src import security # Import the new security module
 
 router = APIRouter(
     prefix="/documents",
@@ -28,8 +29,8 @@ router = APIRouter(
 def upload_document(
     file: UploadFile = File(...),
     document_type: str = Form(...),  # User must specify 'FMEA' or 'CP'
-    user: str = Form(...),  # The user performing the upload
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(security.get_current_user)
 ):
     """
     Uploads an FMEA or CP Excel file, parses it, and stores it in the database.
@@ -76,7 +77,7 @@ def upload_document(
         new_document = models.Document(
             file_name=file.filename,
             document_type=document_type.upper(),
-            uploaded_by=user
+            uploaded_by=current_user.username
         )
         db.add(new_document)
         db.flush()  # Flush to get the new_document.id for the items
@@ -121,8 +122,8 @@ def upload_document(
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
-@router.get("/")
-def list_documents(db: Session = Depends(database.get_db)):
+@router.get("")
+def list_documents(db: Session = Depends(database.get_db), current_user: models.User = Depends(security.get_current_user)):
     """
     Retrieves a list of all uploaded documents from the database.  Each
     document’s timestamps are converted to the Asia/Taipei timezone.
@@ -146,7 +147,7 @@ def list_documents(db: Session = Depends(database.get_db)):
 
 
 @router.get("/{document_id}")
-def get_document_details(document_id: int, db: Session = Depends(database.get_db)):
+def get_document_details(document_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(security.get_current_user)):
     """
     Retrieves details for a specific document, including all its associated items.
     Timestamps on the document and its items are converted to the local

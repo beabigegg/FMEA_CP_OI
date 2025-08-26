@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     DIFY_API_KEY: str = ""
     DIFY_API_URL: str = ""
 
+    # Security & Initial Admin User
+    SECRET_KEY: str = "change_this_secret_key_in_production"
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "admin"
+
     @property
     def DATABASE_URL(self) -> str:
         """

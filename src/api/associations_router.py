@@ -1,56 +1,60 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import List
 
 from src.database import models, database
+from src import security
 
 router = APIRouter(
     prefix="/associations",
     tags=["Associations"],
 )
 
-@router.post("/")
-def create_association(
-    fmea_item_id: int = Body(...),
-    cp_item_id: int = Body(...),
-    user: str = Body(...),
-    db: Session = Depends(database.get_db)
+# --- Pydantic Schemas ---
+class AssociationCreate(BaseModel):
+    fmea_item_id: int
+    cp_item_ids: List[int]
+
+# --- API Endpoints ---
+@router.post("", status_code=201)
+def create_associations(
+    association_data: AssociationCreate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(security.get_current_user)
 ):
     """
-    Creates an association between an FMEA item and a Control Plan item.
+    Creates new associations between one FMEA item and multiple CP items.
+    It will overwrite existing associations for the given FMEA item.
     """
+    fmea_item_id = association_data.fmea_item_id
+    cp_item_ids = association_data.cp_item_ids
+
+    # 1. Validate that the FMEA item exists
+    fmea_item = db.query(models.Item).filter(models.Item.id == fmea_item_id).first()
+    if not fmea_item:
+        raise HTTPException(status_code=404, detail=f"FMEA item with id {fmea_item_id} not found.")
+
+    # 2. (Transactional) Delete all existing associations for this FMEA item
     try:
-        # Check if the items exist and are of the correct type
-        fmea_item = db.query(models.Item).join(models.Document).filter(
-            models.Item.id == fmea_item_id, 
-            models.Document.document_type == 'FMEA'
-        ).first()
-        cp_item = db.query(models.Item).join(models.Document).filter(
-            models.Item.id == cp_item_id, 
-            models.Document.document_type == 'CP'
-        ).first()
+        db.query(models.Association).filter(models.Association.fmea_item_id == fmea_item_id).delete()
 
-        if not fmea_item:
-            raise HTTPException(status_code=404, detail=f"FMEA item with id {fmea_item_id} not found.")
-        if not cp_item:
-            raise HTTPException(status_code=404, detail=f"CP item with id {cp_item_id} not found.")
-
-        # Create the new association
-        new_association = models.Association(
-            fmea_item_id=fmea_item_id,
-            cp_item_id=cp_item_id,
-            created_by=user
-        )
-        db.add(new_association)
+        # 3. Create new association objects
+        new_associations = []
+        for cp_id in cp_item_ids:
+            new_assoc = models.Association(
+                fmea_item_id=fmea_item_id,
+                cp_item_id=cp_id,
+                created_by=current_user.username
+            )
+            new_associations.append(new_assoc)
+        
+        if new_associations:
+            db.bulk_save_objects(new_associations)
+        
         db.commit()
-        db.refresh(new_association)
-
-        return {
-            "message": "Association created successfully",
-            "association_id": new_association.id
-        }
+        return {"message": f"Associations for FMEA item {fmea_item_id} have been updated successfully."}
+    
     except Exception as e:
         db.rollback()
-        # Handle unique constraint violation
-        if 'unique_association' in str(e).lower():
-            raise HTTPException(status_code=409, detail="This association already exists.")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
