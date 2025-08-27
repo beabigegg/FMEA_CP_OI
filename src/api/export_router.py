@@ -1,5 +1,4 @@
 import io
-import json
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -25,7 +24,8 @@ def export_document_to_excel(
     """
     # 1. Fetch the document and ensure it's an FMEA document
     document = db.query(models.Document).options(
-        joinedload(models.Document.items)
+        joinedload(models.Document.fmea_items),
+        joinedload(models.Document.fmea_header)
     ).filter(models.Document.id == document_id).first()
 
     if not document:
@@ -33,7 +33,7 @@ def export_document_to_excel(
     if document.document_type != 'FMEA':
         raise HTTPException(status_code=400, detail="Export is only supported for FMEA documents.")
 
-    fmea_item_ids = [item.id for item in document.items]
+    fmea_item_ids = [item.id for item in document.fmea_items]
 
     # 2. Fetch all associations for the items in this document
     associations = db.query(models.Association).options(
@@ -48,28 +48,28 @@ def export_document_to_excel(
 
     # 4. Prepare data for DataFrame
     export_data = []
-    for item in document.items:
-        try:
-            content = json.loads(item.content)
-            if 'failure_mode' not in content:
-                continue # Skip items that don't look like FMEA process steps
-        except (json.JSONDecodeError, TypeError):
-            continue
-
-        row_data = content
-        row_data['FMEA Item ID'] = item.id
+    for item in document.fmea_items:
+        row_data = {
+            'FMEA Item ID': item.id,
+            'Process Step': item.process_step,
+            'Process Function': item.process_function,
+            'Failure Mode': item.failure_mode,
+            'Failure Cause': item.failure_cause,
+            'Prevention Controls': item.prevention_controls,
+            'Detection Controls': item.detection_controls,
+            'Severity': item.severity,
+            'Occurrence': item.occurrence,
+            'Detection': item.detection,
+            'AP': item.ap
+        }
 
         # Format associated CP items into a single string
         linked_cps = assoc_map.get(item.id, [])
         cp_strings = []
         for cp_item in linked_cps:
-            try:
-                cp_content = json.loads(cp_item.content)
-                cp_strings.append(
-                    f"[ID: {cp_item.id}] {cp_content.get('product_characteristic', 'N/A')} - {cp_content.get('control_method', 'N/A')}"
-                )
-            except (json.JSONDecodeError, TypeError):
-                continue
+            cp_strings.append(
+                f"[ID: {cp_item.id}] {cp_item.product_characteristic} - {cp_item.control_method}"
+            )
         
         row_data['Associated Control Plan Items'] = "\n".join(cp_strings) if cp_strings else "None"
         export_data.append(row_data)

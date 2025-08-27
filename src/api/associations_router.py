@@ -31,7 +31,7 @@ def create_associations(
     cp_item_ids = association_data.cp_item_ids
 
     # 1. Validate that the FMEA item exists
-    fmea_item = db.query(models.Item).filter(models.Item.id == fmea_item_id).first()
+    fmea_item = db.query(models.FmeaItem).filter(models.FmeaItem.id == fmea_item_id).first()
     if not fmea_item:
         raise HTTPException(status_code=404, detail=f"FMEA item with id {fmea_item_id} not found.")
 

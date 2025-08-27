@@ -28,7 +28,7 @@
       <el-card class="table-card">
         <template #header>FMEA Items (Click a row to select)</template>
         <el-table 
-          :data="fmeaItems" 
+          :data="document.fmea_items" 
           height="75vh" 
           border 
           stripe
@@ -36,10 +36,10 @@
           @current-change="handleFmeaRowSelect"
         >
           <el-table-column prop="id" label="ID" width="70" fixed />
-          <el-table-column prop="content.failure_mode" label="Failure Mode" width="250" />
-          <el-table-column prop="content.failure_cause" label="Failure Cause" width="250" />
-          <el-table-column prop="content.prevention_controls" label="Prevention Controls" width="220" />
-          <el-table-column prop="content.detection_controls" label="Detection Controls" width="220" />
+          <el-table-column prop="failure_mode" label="Failure Mode" width="250" />
+          <el-table-column prop="failure_cause" label="Failure Cause" width="250" />
+          <el-table-column prop="prevention_controls" label="Prevention Controls" width="220" />
+          <el-table-column prop="detection_controls" label="Detection Controls" width="220" />
         </el-table>
       </el-card>
 
@@ -70,8 +70,8 @@
         >
           <el-table-column type="selection" width="55" fixed />
           <el-table-column prop="id" label="ID" width="70" />
-          <el-table-column prop="content.product_characteristic" label="Product Characteristic" width="250" />
-          <el-table-column prop="content.control_method" label="Control Method" width="220" />
+          <el-table-column prop="product_characteristic" label="Product Characteristic" width="250" />
+          <el-table-column prop="control_method" label="Control Method" width="220" />
         </el-table>
       </el-card>
     </div>
@@ -106,12 +106,6 @@ const aiSuggestedCpIds = ref([])
 const selectedCpItemIds = ref([])
 const cpTableRef = ref() // Ref for the CP table component
 
-// --- Computed Properties ---
-const fmeaItems = computed(() => {
-  if (!document.value) return []
-  return document.value.items.filter(item => item.content && 'failure_mode' in item.content)
-});
-
 // --- Methods ---
 async function fetchInitialData() {
   loading.value = true
@@ -137,7 +131,7 @@ async function handleCpDocChange(cpDocId) {
   loadingCpItems.value = true
   try {
     const response = await axios.get(`/api/v1/documents/${cpDocId}`)
-    cpItems.value = response.data.items.filter(item => item.content && 'product_characteristic' in item.content)
+    cpItems.value = response.data.items
   } catch (err) {
     handleError(err, 'Failed to load CP document items.')
   } finally {

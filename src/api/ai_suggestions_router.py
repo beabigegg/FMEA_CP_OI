@@ -11,17 +11,11 @@ router = APIRouter(
     tags=["AI Suggestions"],
 )
 
-def format_item_for_prompt(item: models.Item) -> str:
-    try:
-        content = json.loads(item.content)
-    except (json.JSONDecodeError, TypeError):
-        content = {}
-    # Standardize output for both FMEA and CP items
-    if item.document.document_type == 'FMEA':
-        return f"[FMEA Item ID: {item.id}] Failure Mode: {content.get('failure_mode', 'N/A')}, Cause: {content.get('failure_cause', 'N/A')}"
-    elif item.document.document_type == 'CP':
-        return f"[CP Item ID: {item.id}] Characteristic: {content.get('product_characteristic', 'N/A')}, Method: {content.get('control_method', 'N/A')}"
-    return f"[Item ID: {item.id}] Content: {item.content}"
+def format_fmea_item_for_prompt(item: models.FmeaItem) -> str:
+    return f"[FMEA Item ID: {item.id}] Failure Mode: {item.failure_mode}, Cause: {item.failure_cause}"
+
+def format_cp_item_for_prompt(item: models.CpItem) -> str:
+    return f"[CP Item ID: {item.id}] Characteristic: {item.product_characteristic}, Method: {item.control_method}"
 
 @router.post("/suggest-association/{fmea_item_id}")
 def suggest_association(
@@ -34,8 +28,8 @@ def suggest_association(
     """
     try:
         # 1. Get the target FMEA item with its document info
-        target_fmea_item = db.query(models.Item).options(joinedload(models.Item.document)).filter(models.Item.id == fmea_item_id).first()
-        if not target_fmea_item or target_fmea_item.document.document_type != 'FMEA':
+        target_fmea_item = db.query(models.FmeaItem).options(joinedload(models.FmeaItem.document)).filter(models.FmeaItem.id == fmea_item_id).first()
+        if not target_fmea_item:
             raise HTTPException(status_code=404, detail="Target FMEA item not found.")
 
         # 2. Get IDs of CP items already associated with this FMEA item to exclude them
@@ -46,24 +40,24 @@ def suggest_association(
 
         # 3. Get existing associations as examples for the prompt (few-shot learning)
         examples = db.query(models.Association).options(
-            joinedload(models.Association.fmea_item).joinedload(models.Item.document),
-            joinedload(models.Association.cp_item).joinedload(models.Item.document)
+            joinedload(models.Association.fmea_item).joinedload(models.FmeaItem.document),
+            joinedload(models.Association.cp_item).joinedload(models.CpItem.document)
         ).limit(5).all()
         
         example_text = "\n".join([
-            f"- Example: {format_item_for_prompt(ex.fmea_item)} IS LINKED TO {format_item_for_prompt(ex.cp_item)}"
+            f"- Example: {format_fmea_item_for_prompt(ex.fmea_item)} IS LINKED TO {format_cp_item_for_prompt(ex.cp_item)}"
             for ex in examples
         ]) if examples else "No examples available."
 
         # 4. Get all un-associated CP items as candidates
-        candidates_query = db.query(models.Item).options(joinedload(models.Item.document)).join(models.Document).filter(models.Document.document_type == 'CP')
+        candidates_query = db.query(models.CpItem).options(joinedload(models.CpItem.document))
         if associated_cp_ids:
-            candidates_query = candidates_query.filter(models.Item.id.notin_(associated_cp_ids))
+            candidates_query = candidates_query.filter(models.CpItem.id.notin_(associated_cp_ids))
         cp_items = candidates_query.all()
 
         if not cp_items:
             return {"message": "No un-associated Control Plan items available to suggest.", "suggestions": []}
-        options_text = "\n".join([format_item_for_prompt(cp_item) for cp_item in cp_items])
+        options_text = "\n".join([format_cp_item_for_prompt(cp_item) for cp_item in cp_items])
 
         # 5. Construct the enhanced prompt
         prompt = f"""
@@ -76,7 +70,7 @@ def suggest_association(
         {options_text}
 
         ### TARGET FMEA ITEM:
-        {format_item_for_prompt(target_fmea_item)}
+        {format_fmea_item_for_prompt(target_fmea_item)}
 
         Analyze the target FMEA item and the list of available CP items. Identify the top 3 most suitable CP Item IDs from the list. Respond with ONLY a comma-separated list of the 3 numeric IDs, ordered from the most relevant to the least relevant (e.g., 123, 456, 789).
         """

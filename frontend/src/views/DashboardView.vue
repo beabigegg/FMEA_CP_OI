@@ -62,6 +62,51 @@
         </el-table>
       </el-card>
     </div>
+
+    <!-- FMEA Header Dialog -->
+    <el-dialog v-model="fmeaHeaderDialogVisible" title="FMEA Header Information" width="600px">
+      <el-form :model="fmeaHeaderForm" label-width="200px">
+        <el-form-item label="Company Name">
+          <el-input v-model="fmeaHeaderForm.company_name" />
+        </el-form-item>
+        <el-form-item label="Customer Name">
+          <el-input v-model="fmeaHeaderForm.customer_name" />
+        </el-form-item>
+        <el-form-item label="Model of Year / Platform">
+          <el-input v-model="fmeaHeaderForm.model_year_platform" />
+        </el-form-item>
+        <el-form-item label="Plant Location">
+          <el-input v-model="fmeaHeaderForm.plant_location" />
+        </el-form-item>
+        <el-form-item label="Subject">
+          <el-input v-model="fmeaHeaderForm.subject" />
+        </el-form-item>
+        <el-form-item label="PFMEA Start Date">
+          <el-date-picker v-model="fmeaHeaderForm.pfmea_start_date" type="date" placeholder="Pick a date" />
+        </el-form-item>
+        <el-form-item label="PFMEA Revision Date">
+          <el-date-picker v-model="fmeaHeaderForm.pfmea_revision_date" type="date" placeholder="Pick a date" />
+        </el-form-item>
+        <el-form-item label="PFMEA ID">
+          <el-input v-model="fmeaHeaderForm.pfmea_id" />
+        </el-form-item>
+        <el-form-item label="Process Responsibility">
+          <el-input v-model="fmeaHeaderForm.process_responsibility" />
+        </el-form-item>
+        <el-form-item label="Cross-Functional Team">
+          <el-input v-model="fmeaHeaderForm.cross_functional_team" />
+        </el-form-item>
+        <el-form-item label="Confidentiality Level">
+          <el-input v-model="fmeaHeaderForm.confidentiality_level" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="fmeaHeaderDialogVisible = false">Cancel</el-button>
+          <el-button type="primary" @click="confirmUpload">Confirm Upload</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -82,6 +127,20 @@ const uploading = ref(false)
 const uploadForm = ref({
   document_type: 'FMEA',
   file: null
+})
+const fmeaHeaderDialogVisible = ref(false)
+const fmeaHeaderForm = ref({
+  company_name: '',
+  customer_name: '',
+  model_year_platform: '',
+  plant_location: '',
+  subject: '',
+  pfmea_start_date: null,
+  pfmea_revision_date: null,
+  pfmea_id: '',
+  process_responsibility: '',
+  cross_functional_team: '',
+  confidentiality_level: ''
 })
 
 // --- Logic ---
@@ -110,16 +169,32 @@ function handleFileChange(file) {
   uploadForm.value.file = file.raw
 }
 
-async function submitUpload() {
+function submitUpload() {
   if (!uploadForm.value.file) {
     ElNotification({ title: 'Warning', message: 'Please select a file first.', type: 'warning' })
     return
   }
 
+  if (uploadForm.value.document_type === 'FMEA') {
+    fmeaHeaderDialogVisible.value = true
+  } else {
+    confirmUpload()
+  }
+}
+
+async function confirmUpload() {
   uploading.value = true
   const formData = new FormData()
   formData.append('file', uploadForm.value.file)
   formData.append('document_type', uploadForm.value.document_type)
+
+  if (uploadForm.value.document_type === 'FMEA') {
+    Object.keys(fmeaHeaderForm.value).forEach(key => {
+      if (fmeaHeaderForm.value[key]) {
+        formData.append(key, fmeaHeaderForm.value[key])
+      }
+    })
+  }
 
   try {
     await axios.post('/api/v1/documents/upload', formData, {
@@ -130,6 +205,7 @@ async function submitUpload() {
     ElNotification({ title: 'Success', message: 'File uploaded successfully!', type: 'success' })
     uploadRef.value.clearFiles() // Clear file list in upload component
     uploadForm.value.file = null
+    fmeaHeaderDialogVisible.value = false
     fetchDocuments() // Refresh the document list
   } catch (error) {
     const errorMessage = error.response?.data?.detail || 'Upload failed.'
