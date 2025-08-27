@@ -36,10 +36,51 @@
           @current-change="handleFmeaRowSelect"
         >
           <el-table-column prop="id" label="ID" width="70" fixed />
-          <el-table-column prop="failure_mode" label="Failure Mode" width="250" />
-          <el-table-column prop="failure_cause" label="Failure Cause" width="250" />
-          <el-table-column prop="prevention_controls" label="Prevention Controls" width="220" />
-          <el-table-column prop="detection_controls" label="Detection Controls" width="220" />
+          <!-- Core Process Fields -->
+          <el-table-column prop="process_item" label="Process Item" width="200" show-overflow-tooltip />
+          <el-table-column prop="process_step" label="Process Step" width="200" show-overflow-tooltip />
+          <el-table-column prop="process_work_element" label="Process Work Element" width="200" show-overflow-tooltip />
+          <el-table-column prop="function_of_process_item" label="Function of Process Item" width="200" show-overflow-tooltip />
+          <el-table-column prop="function_of_process_step_and_product_characteristic" label="Function of Process Step & Product Characteristic" width="300" show-overflow-tooltip />
+          <el-table-column prop="function_of_process_work_element_and_process_characteristic" label="Function of Work Element & Process Characteristic" width="300" show-overflow-tooltip />
+          
+          <!-- Failure Analysis Fields -->
+          <el-table-column prop="failure_effects_description" label="Failure Effects Description" width="250" show-overflow-tooltip />
+          <el-table-column prop="failure_mode" label="Failure Mode" width="200" show-overflow-tooltip />
+          <el-table-column prop="failure_cause" label="Failure Cause" width="200" show-overflow-tooltip />
+          
+          <!-- Risk Analysis - Current Values -->
+          <el-table-column prop="severity" label="Severity (S)" width="100" align="center" />
+          <el-table-column prop="occurrence" label="Occurrence (O)" width="100" align="center" />
+          <el-table-column prop="detection" label="Detection (D)" width="100" align="center" />
+          <el-table-column prop="ap" label="Action Priority" width="120" align="center" />
+          
+          <!-- Controls -->
+          <el-table-column prop="prevention_controls_description" label="Prevention Controls Description" width="250" show-overflow-tooltip />
+          <el-table-column prop="detection_controls" label="Detection Controls" width="200" show-overflow-tooltip />
+          <el-table-column prop="special_characteristics" label="Special Characteristics" width="150" />
+          <el-table-column prop="filter_code" label="Filter Code" width="100" />
+          
+          <!-- Optimization Actions -->
+          <el-table-column prop="prevention_action" label="Prevention Action" width="200" show-overflow-tooltip />
+          <el-table-column prop="detection_action" label="Detection Action" width="200" show-overflow-tooltip />
+          <el-table-column prop="responsible_person_name" label="Responsible Person" width="150" show-overflow-tooltip />
+          <el-table-column prop="target_completion_date" label="Target Date" width="120" />
+          <el-table-column prop="status" label="Status" width="120" />
+          <el-table-column prop="action_taken" label="Action Taken" width="200" show-overflow-tooltip />
+          <el-table-column prop="completion_date" label="Completion Date" width="120" />
+          
+          <!-- Optimized Values -->
+          <el-table-column prop="severity_opt" label="Severity (Opt)" width="100" align="center" />
+          <el-table-column prop="occurrence_opt" label="Occurrence (Opt)" width="100" align="center" />
+          <el-table-column prop="detection_opt" label="Detection (Opt)" width="100" align="center" />
+          <el-table-column prop="ap_opt" label="AP (Opt)" width="80" align="center" />
+          
+          <!-- Additional Fields -->
+          <el-table-column prop="special_characteristics_opt" label="Special Char (Opt)" width="150" show-overflow-tooltip />
+          <el-table-column prop="remarks" label="Remarks" width="200" show-overflow-tooltip />
+          <el-table-column prop="issue_no" label="Issue #" width="100" />
+          <el-table-column prop="history_change_authorization" label="Change Auth" width="150" show-overflow-tooltip />
         </el-table>
       </el-card>
 
@@ -131,7 +172,7 @@ async function handleCpDocChange(cpDocId) {
   loadingCpItems.value = true
   try {
     const response = await axios.get(`/api/v1/documents/${cpDocId}`)
-    cpItems.value = response.data.items
+    cpItems.value = response.data.cp_items
   } catch (err) {
     handleError(err, 'Failed to load CP document items.')
   } finally {
